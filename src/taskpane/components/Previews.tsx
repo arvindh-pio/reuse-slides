@@ -26,6 +26,17 @@ const useStyles = makeStyles({
         display: "flex",
         justifyContent: "center",
         alignItems: "center"
+    },
+    insertBtn: {
+        background: "none",
+        cursor: "pointer",
+        border: "0",
+        padding: "8px 16px",
+        borderRadius: "8px",
+        transition: "all 0.3s",
+        ":hover": {
+            backgroundColor: "lightgray"
+        }
     }
 })
 
@@ -35,9 +46,10 @@ const Previews = (props: IPreview) => {
     // const [selectedSlides, setSelectedSlides] = useState();
 
     // handlers
-    const handleInsert = async (slideId: string, base64: string) => {
+    const handleInsert = async (slideId: string, base64: string, insertAll: boolean = false) => {
         const targetSlideId = await getSelectedSlideId();
-        await insertAllSlidesAndGoToLast(base64, targetSlideId, slideId, formatting);
+        const sourceIds = insertAll ? sourceSlideIds?.map((slide) => slide?.slideId) : [slideId];
+        await insertAllSlidesAndGoToLast(base64, targetSlideId, sourceIds, formatting);
     }
 
     const getSelectedSlideId = () => {
@@ -58,6 +70,8 @@ const Previews = (props: IPreview) => {
 
     return (
         <div className={styles.previewContainer}>
+            {previews?.length > 0 || sourceSlideIds?.length > 0 && 
+                <button className={styles.insertBtn} onClick={() => handleInsert("", base64, true)}>Insert all</button>}
             {previews?.length > 0 ? previews?.map((preview, idx) => {
                 return (
                     <img

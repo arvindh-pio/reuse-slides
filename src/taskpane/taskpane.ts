@@ -16,7 +16,7 @@ export async function insertText(text: string) {
   }
 }
 
-export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlideId: string, sourceId: string, formatting: boolean) => {
+export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlideId: string, sourceIds: string[], formatting: boolean) => {
   await PowerPoint.run(async function(context) {
     // before
     const slidesBefore = context.presentation.slides;
@@ -29,7 +29,7 @@ export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlide
     context.presentation.insertSlidesFromBase64(chosenFile, {
       formatting: formatting? "KeepSourceFormatting" : "UseDestinationTheme",
       targetSlideId: targetSlideId + "#",
-      sourceSlideIds: [sourceId + "#"]
+      sourceSlideIds:  sourceIds?.map((id) => id + "#")
     })
     await context.sync();
 

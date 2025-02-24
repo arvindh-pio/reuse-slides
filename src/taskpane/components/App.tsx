@@ -12,7 +12,6 @@ const useStyles = makeStyles({
   root: {
     minHeight: "100vh",
     padding: "1rem 2rem"
-    // border: "10px solid black",
   },
 });
 
@@ -26,8 +25,6 @@ const App: React.FC = () => {
   const [sourceSlideIds, setSourceSlideIds] = useState<ISlide[]>([]);
   const [base64, setBase64] = useState<string | null>(null);
   const [formatting, setFormatting] = useState(false);
-
-  console.log(previews, sourceSlideIds, "app");
 
   return (
     <div className={styles.root}>
