@@ -24,7 +24,7 @@ const App: React.FC = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [sourceSlideIds, setSourceSlideIds] = useState<ISlide[]>([]);
   const [base64, setBase64] = useState<string | null>(null);
-  const [formatting, setFormatting] = useState(false);
+  const [formatting, setFormatting] = useState(true);
 
   return (
     <div className={styles.root}>

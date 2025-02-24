@@ -34,6 +34,7 @@ const useStyles = makeStyles({
         padding: "8px 16px",
         borderRadius: "8px",
         transition: "all 0.3s",
+        fontFamily: "system-ui",
         ":hover": {
             backgroundColor: "lightgray"
         }
