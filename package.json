@@ -28,9 +28,12 @@
     "watch": "webpack --mode development --watch"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.4.0",
     "@fluentui/react-components": "^9.46.8",
     "@fluentui/react-icons": "^2.0.232",
     "core-js": "^3.36.0",
+    "dotenv": "^16.4.7",
+    "dotenv-webpack": "^8.1.0",
     "es6-promise": "^4.2.8",
     "fast-xml-parser": "^5.0.6",
     "jszip": "^3.10.1",
@@ -68,6 +71,7 @@
     "source-map-loader": "^5.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.4.2",
+    "vite": "^6.1.1",
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "5.1.0"
