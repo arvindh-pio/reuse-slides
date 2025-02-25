@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { makeStyles } from "@fluentui/react-components";
 import FileInput from "./FileInput";
 import Previews from "./Previews";
-import { msalInstance } from "../../configs/authConfig";
+import Ppt from "../Pages/Ppt";
+import Slides from "../Pages/Slides";
+import { CustomDriveItemResponse, DriveItemResponse } from "../Types";
 
 export interface ISlide {
   index: number;
@@ -14,12 +16,53 @@ const useStyles = makeStyles({
     minHeight: "100vh",
     padding: "1rem"
   },
+  searchDiv: {
+    display: "flex",
+    gap: "5px",
+    alignItems: "center",
+    width: "100%",
+    boxSizing: "border-box",
+    marginBottom: "0.7rem"
+  },
+  searchInput: {
+    padding: "5px 10px",
+    fontSize: "0.9rem",
+    borderRadius: "5px",
+    outline: "none",
+    border: "1px solid black",
+    boxSizing: "border-box"
+  },
+  searchButton: {
+    background: "none",
+    border: "1px solid crimson",
+    padding: "5px 10px",
+    fontFamily: "sans-serif",
+    borderRadius: "4px",
+    cursor: "pointer"
+  },
+  browseButton: {
+    background: "none",
+    border: "1px solid crimson",
+    padding: "10px 20px",
+    cursor: "pointer",
+    fontFamily: "sans-serif",
+    fontSize: "0.9rem",
+    textAlign: "center",
+    borderRadius: "8px",
+    transition: "all 0.3s",
+    backgroundColor: "crimson",
+    color: "white",
+    fontWeight: "bold",
+    letterSpacing: "0.1em",
+    "&:hover": {
+      opacity: "0.7",
+    }
+  },
 });
 
 const App: React.FC = () => {
   // styles
   const styles = useStyles();
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // states
@@ -28,45 +71,10 @@ const App: React.FC = () => {
   const [sourceSlideIds, setSourceSlideIds] = useState<ISlide[]>([]);
   const [base64, setBase64] = useState<string | null>(null);
   const [formatting, setFormatting] = useState(true);
-  const [searchResults, setSearchResults] = useState([]);
-
-  useEffect(() => {
-    handleLogin();
-  }, []);
-
-  const handleLogin = async () => {
-    try {
-      await msalInstance.initialize();
-      const loginResponse = await msalInstance.loginPopup({
-        scopes: ["User.read", "Files.Read", "Files.Read.All", "Sites.Read.All"]
-      });
-      console.log("login res -> ", loginResponse);
-    } catch (error) {
-      console.log("Login failed -> ", error);
-    }
-  }
-
-  const getAccessToken = async () => {
-    try {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length === 0) {
-        throw new Error("No account logged in");
-      }
-
-      const response = await msalInstance.acquireTokenSilent({
-        scopes: ["Files.Read", "Files.Read.All"],
-        account: accounts[0],
-      })
-
-      return response.accessToken;
-    } catch (error) {
-      console.log("Error getting token -> ", error);
-      return null;
-    }
-  }
+  const [searchResults, setSearchResults] = useState<CustomDriveItemResponse[]>([]);
 
   const searchPpt = async () => {
-    const token = await getAccessToken();
+    const token = localStorage.getItem("token");
     if (!searchQuery) return;
 
     const response = await
@@ -80,7 +88,7 @@ const App: React.FC = () => {
         }
       );
 
-    const data = await response.json();
+    const data: DriveItemResponse = await response.json();
     const pptFiles = await Promise.all(
       data.value.map(async (file) => {
         const extArr = file.name.split(".") || [];
@@ -119,38 +127,20 @@ const App: React.FC = () => {
 
   return (
     <div className={styles.root}>
-      <div style={{
-        display: "flex",
-        gap: "5px",
-        alignItems: "center",
-        width: "100%",
-        boxSizing: "border-box",
-        marginBottom: "0.7rem"
-      }}>
+      {/* common */}
+      {/* search */}
+      <div className={styles.searchDiv}>
         <input
           type="text"
           name="searchQuery"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            padding: "5px 10px",
-            fontSize: "0.9rem",
-            borderRadius: "5px",
-            outline: "none",
-            border: "1px solid black",
-            boxSizing: "border-box"
-          }} />
+          className={styles.searchInput} />
         <button
           onClick={searchPpt}
-          style={{
-            background: "none",
-            border: "1px solid crimson",
-            padding: "5px 10px",
-            fontFamily: "sans-serif",
-            borderRadius: "4px",
-            cursor: "pointer"            
-          }}>Search</button>
+          className={styles.searchButton}>Search</button>
       </div>
+      {/* browse */}
       <FileInput
         setFile={setFile}
         setPreviews={setPreviews}
@@ -159,24 +149,22 @@ const App: React.FC = () => {
         setFormatting={setFormatting}
         sourceSlidesLength={sourceSlideIds?.length}
         formatting={formatting} />
-      <Previews base64={base64} previews={previews} sourceSlideIds={sourceSlideIds} formatting={formatting} />
-      {searchResults?.length > 0 && <h2 style={{ margin: "0 0 1rem 0" }}>Results</h2>}
-      {searchResults?.map((result) => {
-        return (
-          <div style={{ width: "100%", marginBottom: "0.5rem" }}>
-            <p style={{
-              fontWeight: "500",
-              marginBlock: "5px"
-            }}>{result?.name}</p>
-            <img src={result?.thumbnail} alt="" style={{
-              aspectRatio: "3 / 4",
-              width: "100%",
-              maxHeight: "150px",
-              borderRadius: "8px"
-            }} />
-          </div>
-        )
-      })}
+
+      {/* ppt */}
+      {searchResults?.length > 0 && <Ppt searchResults={searchResults} />}
+
+      {/* slides */}
+      <Slides />
+
+      {/* <FileInput
+        setFile={setFile}
+        setPreviews={setPreviews}
+        setSourceSlideIds={setSourceSlideIds}
+        setBase64={setBase64}
+        setFormatting={setFormatting}
+        sourceSlidesLength={sourceSlideIds?.length}
+        formatting={formatting} />
+      <Previews base64={base64} previews={previews} sourceSlideIds={sourceSlideIds} formatting={formatting} /> */}
     </div>
   );
 };
