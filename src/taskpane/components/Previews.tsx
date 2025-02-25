@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { insertAllSlidesAndGoToLast } from "../taskpane";
 import { ISlide } from "./App";
 import { makeStyles } from "@fluentui/react-components";
