@@ -42,3 +42,20 @@ export interface DriveItem {
 export interface CustomDriveItemResponse extends DriveItem {
     thumbnail: string;
 }
+
+export interface SiteIdResponse {
+    "@odata.context": string
+    createdDateTime: string
+    description: string
+    id: string
+    lastModifiedDateTime: string
+    name: string
+    webUrl: string
+    displayName: string
+    root: any;
+    siteCollection: SiteCollection
+}
+
+export interface SiteCollection {
+    hostname: string
+}
