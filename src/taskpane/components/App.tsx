@@ -73,6 +73,13 @@ const useStyles = makeStyles({
     display: "block",
     margin: "0"
   },
+  loading: {
+    width: "100%",
+    height: "75vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
+  }
 });
 
 const App: React.FC = () => {
@@ -355,6 +362,7 @@ const App: React.FC = () => {
 
   // after setting config, fetch the recent files only from that config
   const getRecentFilesFromLibrary = async () => {
+    setLoading(true);
     setConfig(true);
     const token = getToken();
     try {
@@ -372,6 +380,8 @@ const App: React.FC = () => {
       await getDocAndPPTFiles(site);
     } catch (error) {
       console.log("Error in searching files ", error);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -500,6 +510,8 @@ const App: React.FC = () => {
       setSearchQuery("");
     }
   }, [showSlides])
+
+  if (loading) return <p className={styles.loading}>Loading...</p>
 
   return (
     <div className={styles.root}>
