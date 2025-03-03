@@ -7,6 +7,8 @@ import { CustomDriveItemResponse } from "../Types";
 import { API_BASE_URL, UPLOAD_API } from "../utils/constants";
 import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
+import { getToken } from "../utils/utils";
+import Config from "./Config";
 
 export interface ISlide {
   index: number;
@@ -24,7 +26,8 @@ const useStyles = makeStyles({
     alignItems: "center",
     width: "100%",
     boxSizing: "border-box",
-    marginBottom: "0.7rem"
+    marginBottom: "0.7rem",
+    flexDirection: "column"
   },
   searchInput: {
     padding: "5px 10px",
@@ -32,7 +35,13 @@ const useStyles = makeStyles({
     borderRadius: "5px",
     outline: "none",
     border: "1px solid black",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    width: "100%",
+  },
+  actionBtns: {
+    display: "flex",
+    width: "100%",
+    justifyContent: "space-evenly"
   },
   searchButton: {
     background: "none",
@@ -84,8 +93,14 @@ const App: React.FC = () => {
   const [showSlides, setShowSlides] = useState(false);
   const [isSearchClicked, setSearchClicked] = useState(false);
 
+  const [libraryName, setLibraryName] = useState("");
+  const [siteName, setSiteName] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [site, setSite] = useState(null);
+  const [drive, setDrive] = useState(null);
+  const [config, setConfig] = useState(false);
 
   const callGraphApi = async (type: "RECENT" | "SEARCH") => {
     if (type === "SEARCH") {
@@ -253,7 +268,7 @@ const App: React.FC = () => {
 
     const pptFiles = await Promise.all(
       data.map(async (hit) => {
-        const file = hit?.resource;
+        const file = hit;
         const extArr = file.name.split(".") || [];
         const ext = extArr[extArr.length - 1];
 
@@ -321,6 +336,7 @@ const App: React.FC = () => {
     return pptFiles;
   }
 
+  // fetches whole onedrive and sharepoint recent ppt files
   const fetchFiles = async () => {
     await callGraphApi("RECENT");
   }
@@ -337,53 +353,205 @@ const App: React.FC = () => {
     setSourceSlideIds([]);
   }
 
-  useEffect(() => {
-    fetchFiles();
-  }, [])
+  // after setting config, fetch the recent files only from that config
+  const getRecentFilesFromLibrary = async () => {
+    setConfig(true);
+    const token = getToken();
+    try {
+      // first get all sites
+      const sitesResponse = await fetch("https://graph.microsoft.com/v1.0/sites?search=*", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      })
+      const sitesData = await sitesResponse.json();
+      const site = sitesData?.value?.find((site) => site?.displayName === siteName);
+      setSite(site);
+      await getDocAndPPTFiles(site);
+    } catch (error) {
+      console.log("Error in searching files ", error);
+    }
+  }
+
+  // gets library and ppt files from that lib
+  const getDocAndPPTFiles = async (localSite) => {
+    const token = getToken();
+    const siteId = localSite.id;
+
+    const drive = await getDocLibraryFromSite(siteId, token);
+
+    if (drive) {
+      setDrive(drive);
+      await getFilesFromDrive(drive.id, token);
+    } else {
+      console.log("Drive not found ", libraryName);
+    }
+  }
+
+  // get particular library from site
+  const getDocLibraryFromSite = async (siteId: string, token: string) => {
+    try {
+      const drivesResponse = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+      })
+      const drivesData = await drivesResponse.json();
+
+      const drive = drivesData?.value?.find(drive => drive.name.toLowerCase() === libraryName.toLowerCase());
+      return drive;
+    } catch (error) {
+      console.log("Error while searching for doc in drives", error);
+    }
+  }
+
+  // get ppt files from drive
+  const getFilesFromDrive = async (driveId: string, token: string) => {
+    try {
+      const driveResponse = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      });
+      const drivesData = await driveResponse.json();
+      const pptFiles = drivesData?.value?.filter(file => file?.name?.endsWith(".pptx"));
+      const ppts = await getThumbnails(pptFiles);
+      setRecentResults(ppts);
+    } catch (error) {
+      console.log("error get files from drive -> ", error);
+    }
+  }
+
+  // get thumbnails
+  const getThumbnails = async (ppts) => {
+    const token = localStorage.getItem("token");
+
+    const pptFiles = await Promise.all(
+      ppts.map(async (hit) => {
+        const file = hit;
+        const extArr = file.name.split(".") || [];
+        const ext = extArr[extArr.length - 1];
+
+        if (ext === "ppt" || ext === "pptx") {
+          let image = null;
+          // # fallback 1
+          const siteId = file?.parentReference?.siteId;
+          const driveId = file?.parentReference?.driveId;
+          const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${file.id}/thumbnails`;
+
+          try {
+            const response = await fetch(url, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+              }
+            });
+            const data = await response.json();
+            image = data?.value?.[0]?.large?.url;
+          } catch (error) {
+            image = null;
+          }
+
+          return {
+            thumbnail: image,
+            ...file
+          };
+        }
+        return null; // Return null for non-PPT files
+      })
+    );
+
+    return pptFiles;
+  }
+
+  const searchForKeywordInLibraryDocs = async () => {
+    const token = getToken();
+
+    const url = `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/${drive.id}/root/search(q='{${searchQuery}}')`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const data = await response.json();
+      const pptFiles = data?.value?.filter(file => file?.name?.endsWith(".pptx"));
+      const ppts = await getThumbnails(pptFiles);
+      setSearchResults(ppts);
+    } catch (error) {
+    }
+  }
+
+  const handleReset = () => {
+    setSearchResults([]);
+  }
 
   useEffect(() => {
-    if(!showSlides) {
+    if (!showSlides) {
       setSearchQuery("");
     }
-  }, [showSlides]) 
+  }, [showSlides])
 
   return (
     <div className={styles.root}>
       {/* common */}
       {/* search, browse */}
-      <div className={styles.searchDiv}>
-        <input
-          type="text"
-          name="searchQuery"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={styles.searchInput} />
-        <button
-          onClick={searchPpt}
-          className={styles.searchButton}>Search</button>
-      </div>
-      {/* browse */}
-      <FileInput
-        setFile={setFile}
-        generatePPTDetails={generatePPTDetails} />
-      {error && <p className={styles.block}>{error}</p>}
+      {!config ? (
+        <Config
+          libraryName={libraryName}
+          setLibraryName={setLibraryName}
+          siteName={siteName}
+          setSiteName={setSiteName}
+          getRecentFilesFromLibrary={getRecentFilesFromLibrary} />
+      ) : (
+        <>
+          <div className={styles.searchDiv}>
+            <input
+              type="text"
+              name="searchQuery"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput} />
+            <div className={styles.actionBtns}>
+              <button
+                onClick={searchForKeywordInLibraryDocs}
+                className={styles.searchButton}>Search</button>
+              <button className={styles.searchButton} onClick={handleReset} disabled={searchResults?.length === 0}>Reset</button>
+            </div>
+          </div>
+          {/* browse */}
+          <FileInput
+            setFile={setFile}
+            generatePPTDetails={generatePPTDetails} />
+          {error && <p className={styles.block}>{error}</p>}
 
-      {!showSlides
-        ? <Ppt
-          searchResults={(searchResults?.length > 0 || isSearchClicked) ? searchResults : recentResults}
-          generatePPTDetails={generatePPTDetails}
-          isSearchClicked={isSearchClicked} />
-        : loading ? (
-          <p>Loading...</p>
-        ) : (
-          <Slides
-            base64={base64}
-            previews={previews}
-            sourceSlideIds={sourceSlideIds}
-            formatting={formatting}
-            setFormatting={setFormatting}
-            handleBack={handleBack} />
-        )}
+          {!showSlides
+            ? <Ppt
+              searchResults={(searchResults?.length > 0 || isSearchClicked) ? searchResults : recentResults}
+              generatePPTDetails={generatePPTDetails}
+              isSearchClicked={isSearchClicked} />
+            : loading ? (
+              <p>Loading...</p>
+            ) : (
+              <Slides
+                base64={base64}
+                previews={previews}
+                sourceSlideIds={sourceSlideIds}
+                formatting={formatting}
+                setFormatting={setFormatting}
+                handleBack={handleBack} />
+            )}
+        </>
+      )}
     </div>
   );
 };
