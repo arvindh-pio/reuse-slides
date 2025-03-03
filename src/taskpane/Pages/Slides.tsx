@@ -8,8 +8,8 @@ interface IPreview {
   base64: string;
   sourceSlideIds: ISlide[];
   formatting: boolean;
-  setShowSlides: React.Dispatch<React.SetStateAction<boolean>>;
   setFormatting: React.Dispatch<React.SetStateAction<boolean>>;
+  handleBack: () => void;
 }
 
 const useStyles = makeStyles({
@@ -49,7 +49,7 @@ const useStyles = makeStyles({
 
 const Slides = (props: IPreview) => {
   const styles = useStyles();
-  const { previews, base64, sourceSlideIds, formatting, setShowSlides, setFormatting } = props;
+  const { previews, base64, sourceSlideIds, formatting, setFormatting, handleBack } = props;
 
   // handlers
   const handleInsert = async (slideId: string, base64: string, insertAll: boolean = false) => {
@@ -84,7 +84,7 @@ const Slides = (props: IPreview) => {
         margin: "1rem 0 0 0"
       }}>
         <h3 style={{ margin: "0" }}>Presentation</h3>
-        <p style={{ textDecoration: "underline", margin: "0", cursor: "pointer" }} onClick={() => setShowSlides(false)}>Back</p>
+        <p style={{ textDecoration: "underline", margin: "0", cursor: "pointer" }} onClick={handleBack}>Back</p>
       </div>
       <div style={{
         display: "flex",

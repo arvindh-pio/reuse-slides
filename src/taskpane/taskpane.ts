@@ -17,7 +17,7 @@ export async function insertText(text: string) {
 }
 
 export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlideId: string, sourceIds: string[], formatting: boolean) => {
-  await PowerPoint.run(async function(context) {
+  await PowerPoint.run(async function (context) {
     // before
     const slidesBefore = context.presentation.slides;
     slidesBefore.load("items");
@@ -27,9 +27,9 @@ export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlide
 
     // insertion
     context.presentation.insertSlidesFromBase64(chosenFile, {
-      formatting: formatting? "KeepSourceFormatting" : "UseDestinationTheme",
+      formatting: formatting ? "KeepSourceFormatting" : "UseDestinationTheme",
       targetSlideId: targetSlideId + "#",
-      sourceSlideIds:  sourceIds?.map((id) => id + "#")
+      sourceSlideIds: sourceIds?.map((id) => id + "#")
     })
     await context.sync();
 
@@ -42,8 +42,8 @@ export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlide
 
     // find new
     const newSlides = afterIds.filter(id => !beforeIds.includes(id));
-    if(newSlides.length === 0) {
-      return ;
+    if (newSlides.length === 0) {
+      return;
     }
     const lastInsertedSlideId = newSlides[newSlides.length - 1];
 
@@ -52,7 +52,7 @@ export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlide
       lastInsertedSlideId.split("#")[0],
       Office.GoToType.Slide,
       (asyncResult) => {
-        if(asyncResult.status === Office.AsyncResultStatus.Failed) {
+        if (asyncResult.status === Office.AsyncResultStatus.Failed) {
           console.error("Navigation err -> ", asyncResult.error.message);
         } else {
           console.log("Success", lastInsertedSlideId);
@@ -61,3 +61,21 @@ export const insertAllSlidesAndGoToLast = async (chosenFile: string, targetSlide
     )
   })
 }
+
+function getSelectedSlideThumbnail() {
+  // Office.context.document.getSelectedSlidesAsync((result) => {
+  //   if (result.status === Office.AsyncResultStatus.Succeeded) {
+  //     const selectedSlide = result.value.slides[0];
+  //     selectedSlide.getThumbnailAsync(Office.ImageFormat.JPEG, (thumbnailResult) => {
+  //       if (thumbnailResult.status === Office.AsyncResultStatus.Succeeded) {
+  //         const thumbnailUrl = thumbnailResult.value;
+  //         console.log("Thumbnail URL: ", thumbnailUrl);
+  //         // You can now use the thumbnail URL as needed        } else {
+  //         console.error("Failed to get thumbnail: ", thumbnailResult.error.message);
+  //       }
+  //     });
+  //   } else {
+  //     console.error("Failed to get selected slide: ", result.error.message);
+  //   }
+  // })
+};

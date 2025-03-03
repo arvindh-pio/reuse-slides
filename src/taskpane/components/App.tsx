@@ -325,9 +325,27 @@ const App: React.FC = () => {
     await callGraphApi("RECENT");
   }
 
+  const handleBack = () => {
+    // switch to initial states
+    setSearchResults([]);
+    setSearchQuery("");
+    setShowSlides(false);
+    setSearchClicked(false);
+
+    setPreviews([]);
+    setBase64(null);
+    setSourceSlideIds([]);
+  }
+
   useEffect(() => {
     fetchFiles();
   }, [])
+
+  useEffect(() => {
+    if(!showSlides) {
+      setSearchQuery("");
+    }
+  }, [showSlides]) 
 
   return (
     <div className={styles.root}>
@@ -361,10 +379,10 @@ const App: React.FC = () => {
           <Slides
             base64={base64}
             previews={previews}
-            setShowSlides={setShowSlides}
             sourceSlideIds={sourceSlideIds}
             formatting={formatting}
-            setFormatting={setFormatting} />
+            setFormatting={setFormatting}
+            handleBack={handleBack} />
         )}
     </div>
   );
