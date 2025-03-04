@@ -354,6 +354,7 @@ const App: React.FC = () => {
     setSearchQuery("");
     setShowSlides(false);
     setSearchClicked(false);
+    setError("");
 
     setPreviews([]);
     setBase64(null);
@@ -482,6 +483,8 @@ const App: React.FC = () => {
   }
 
   const searchForKeywordInLibraryDocs = async () => {
+    setError(null);
+    setSearchClicked(true);
     const token = getToken();
 
     const url = `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/${drive.id}/root/search(q='{${searchQuery}}')`;
@@ -502,7 +505,10 @@ const App: React.FC = () => {
   }
 
   const handleReset = () => {
+    setSearchQuery("");
     setSearchResults([]);
+    setSearchClicked(false);
+    setError("");
   }
 
   useEffect(() => {
@@ -537,7 +543,7 @@ const App: React.FC = () => {
               <button
                 onClick={searchForKeywordInLibraryDocs}
                 className={styles.searchButton}>Search</button>
-              <button className={styles.searchButton} onClick={handleReset} disabled={searchResults?.length === 0}>Reset</button>
+              <button className={styles.searchButton} onClick={handleReset} disabled={!isSearchClicked}>Reset</button>
             </div>
           </div>
           {/* browse */}
