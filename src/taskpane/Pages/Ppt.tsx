@@ -25,7 +25,7 @@ const Ppt = (props: IPpt) => {
                 <>
                     {searchResults?.map((result) => {
                         return (
-                            <div style={{ width: "100%", marginBottom: "0.5rem" }}>
+                            <div key={result?.id} style={{ width: "100%", marginBottom: "0.5rem" }}>
                                 <p style={{
                                     fontWeight: "500",
                                     marginBlock: "5px"
