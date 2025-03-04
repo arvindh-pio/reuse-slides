@@ -9,6 +9,8 @@ import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
 import { getToken } from "../utils/utils";
 import Config from "./Config";
+import FilterDropdown from "./FilterDropdown";
+import { getFilteredData } from "../utils/filters";
 
 export interface ISlide {
   index: number;
@@ -97,6 +99,7 @@ const App: React.FC = () => {
 
   const [recentResults, setRecentResults] = useState<CustomDriveItemResponse[]>([]);
   const [searchResults, setSearchResults] = useState<CustomDriveItemResponse[]>([]);
+
   const [showSlides, setShowSlides] = useState(false);
   const [isSearchClicked, setSearchClicked] = useState(false);
 
@@ -108,6 +111,9 @@ const App: React.FC = () => {
   const [site, setSite] = useState(null);
   const [drive, setDrive] = useState(null);
   const [config, setConfig] = useState(false);
+
+  // filter columns
+  const [tag, setTag] = useState(null);
 
   const callGraphApi = async (type: "RECENT" | "SEARCH") => {
     if (type === "SEARCH") {
@@ -361,11 +367,12 @@ const App: React.FC = () => {
     setSourceSlideIds([]);
   }
 
-  // after setting config, fetch the recent files only from that config
+  // 1. after setting config, fetch the recent files only from that config
   const getRecentFilesFromLibrary = async () => {
     setLoading(true);
     setConfig(true);
     const token = getToken();
+
     try {
       // first get all sites
       const sitesResponse = await fetch("https://graph.microsoft.com/v1.0/sites?search=*", {
@@ -386,7 +393,7 @@ const App: React.FC = () => {
     }
   }
 
-  // gets library and ppt files from that lib
+  // 2. gets library and ppt files from that lib
   const getDocAndPPTFiles = async (localSite) => {
     const token = getToken();
     const siteId = localSite.id;
@@ -395,13 +402,13 @@ const App: React.FC = () => {
 
     if (drive) {
       setDrive(drive);
-      await getFilesFromDrive(drive.id, token);
+      await getFilesFromDrive(siteId, drive.id, token);
     } else {
       console.log("Drive not found ", libraryName);
     }
   }
 
-  // get particular library from site
+  // 2.1 get particular library from site
   const getDocLibraryFromSite = async (siteId: string, token: string) => {
     try {
       const drivesResponse = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, {
@@ -420,10 +427,65 @@ const App: React.FC = () => {
     }
   }
 
-  // get ppt files from drive
-  const getFilesFromDrive = async (driveId: string, token: string) => {
+  // 2.2 get ppt files from drive
+  const getFilesFromDrive = async (siteId: string, driveId: string, token: string) => {
     try {
-      const driveResponse = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`, {
+      const defaultFiles = await getFiles(driveId, token);
+      const expandedFiles = await getExpandedFiles(siteId);
+      const files = mergeResponses(defaultFiles, expandedFiles);
+      const ppts = await getThumbnails(files, driveId);
+      setRecentResults(ppts);
+    } catch (error) {
+      console.log("error in getting files ", error);
+    }
+    // try {
+    //   const library = await getLibraryId(siteId);
+    //   const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
+    //   // const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${library.id}/items?$expand=fields`;
+    //   const driveResponse = await fetch(url, {
+    //     headers: {
+    //       Authorization: `Bearer ${token}`,
+    //       "Content-Type": "application/json"
+    //     },
+    //     method: "GET"
+    //   });
+    //   const drivesData = await driveResponse.json();
+    //   const pptFiles = drivesData?.value?.filter(file => file?.name?.endsWith(".pptx"));
+    //   // const pptsPromises = pptFiles?.map(async (ppt) => {
+    //   //   const id = ppt.id;
+
+    //   //   try {
+    //   //     const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${library.id}/files/${id}?$expand=fields`;
+    //   //     const response = await fetch(url, {
+    //   //       headers: {
+    //   //         Authorization: `Bearer ${token}`,
+    //   //         "Content-Type": "application/json"
+    //   //       },
+    //   //       method: "GET"
+    //   //     });
+    //   //     const data = await response.json();
+    //   //     return {
+    //   //       customFileId: id,
+    //   //       ...data.value
+    //   //     }
+    //   //   } catch (error) {
+
+    //   //   }
+    //   // })
+    //   // const ff = await Promise.all(pptsPromises);
+    //   const ppts = await getThumbnails(pptFiles, driveId);
+    //   console.log("xxxxxxxx ", pptFiles);
+    //   setRecentResults(ppts);
+    // } catch (error) {
+    //   console.log("error get files from drive -> ", error);
+    // }
+  }
+
+  // 2.2.1 get default files
+  const getFiles = async (driveId: string, token: string) => {
+    try {
+      const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
+      const driveResponse = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -432,29 +494,66 @@ const App: React.FC = () => {
       });
       const drivesData = await driveResponse.json();
       const pptFiles = drivesData?.value?.filter(file => file?.name?.endsWith(".pptx"));
-      const ppts = await getThumbnails(pptFiles);
-      setRecentResults(ppts);
+      return pptFiles;
     } catch (error) {
       console.log("error get files from drive -> ", error);
     }
   }
 
+  // 2.2.2 get expanded files
+  const getExpandedFiles = async (siteId) => {
+    const token = getToken();
+    const library = await getLibraryId(siteId);
+
+    try {
+      const response = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId || site.id}/lists/${library.id}/items?$expand=fields`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      });
+      const libraryData = await response.json();
+      return libraryData?.value;
+    } catch (error) {
+      console.log("get expanded files error -> ", error);
+    }
+  }
+
+  // 2.2.3 merge responses
+  const mergeResponses = (defaultFiles, expandedFiles) => {
+    let final = defaultFiles?.map((defFile) => {
+      const found = expandedFiles?.find((file) => file?.fields?.FileLeafRef === defFile.name);
+      if (found) return {
+        customId: defFile?.id,
+        customDriveId: defFile?.parentReference?.driveId,
+        ...found
+      };
+      else null;
+    });
+
+    final = final?.filter((file) => file !== null);
+    console.log("########", final);
+    return final;
+  }
+
   // get thumbnails
-  const getThumbnails = async (ppts) => {
+  const getThumbnails = async (ppts, _: string = null) => {
     const token = localStorage.getItem("token");
 
     const pptFiles = await Promise.all(
       ppts.map(async (hit) => {
         const file = hit;
-        const extArr = file.name.split(".") || [];
+        console.log("file ", file);
+        const extArr = file?.fields?.FileLeafRef.split(".") || [];
         const ext = extArr[extArr.length - 1];
 
         if (ext === "ppt" || ext === "pptx") {
           let image = null;
           // # fallback 1
           const siteId = file?.parentReference?.siteId;
-          const driveId = file?.parentReference?.driveId;
-          const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${file.id}/thumbnails`;
+          const driveId = file?.customDriveId;
+          const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${file.customId}/thumbnails`;
 
           try {
             const response = await fetch(url, {
@@ -511,6 +610,78 @@ const App: React.FC = () => {
     setError("");
   }
 
+  const getLibraryId = async (localSiteId: string = null) => {
+    const token = getToken();
+
+    try {
+      const response = await fetch(`https://graph.microsoft.com/v1.0/sites/${localSiteId || site.id}/lists`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      });
+      const libraryData = await response.json();
+      console.log(libraryData, "********");
+      const library = libraryData?.value?.find((data) => data.displayName === libraryName);
+      return library;
+    } catch (error) {
+      console.log("filters error -> ", error);
+    }
+  }
+
+  const getFilters = async () => {
+    const token = getToken();
+    const library = await getLibraryId();
+
+    try {
+      const response = await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/lists/${library.id}/columns`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      });
+      const colsData = await response.json();
+      const tagCol = colsData?.value?.find((col) => col?.displayName === "Tag");
+      setTag(tagCol);
+    } catch (error) {
+      console.log("filters error -> ", error);
+    }
+  }
+
+  const handleFilter = async (key: string, val: string) => {
+    const datas = getFilteredData(recentResults, key, val);
+    setSearchResults(datas);
+  }
+
+  const test = async () => {
+    const token = getToken();
+    const library = await getLibraryId(site.id);
+
+    try {
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/b!A8xRw8PhhEipKKGLOg8jIdLYbQIfU9pOn4DXZs7wMSE2CHN5BdKHRr8UO3rRbCpK/root/search(q='presentation')?$filter=fields/Tag eq 'Tech'`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        method: "GET"
+      });
+      const colsData = await response.json();
+      console.log(colsData, "^^^^^^");
+    } catch (error) {
+      console.log("filters error -> ", error);
+    }
+  }
+
+  useEffect(() => {
+    if (site && drive) {
+      getFilters();
+      test();
+    }
+  }, [site, drive])
+
   useEffect(() => {
     if (!showSlides) {
       setSearchQuery("");
@@ -551,6 +722,12 @@ const App: React.FC = () => {
             setFile={setFile}
             generatePPTDetails={generatePPTDetails} />
           {error && <p className={styles.block}>{error}</p>}
+
+          {/* Filters */}
+          <h3>Filters: </h3>
+          {tag && (
+            <FilterDropdown customObject={tag} site={site} library={drive} handleFilter={handleFilter} />
+          )}
 
           {!showSlides
             ? <Ppt
