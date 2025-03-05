@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
+const configJson = require("./config.json");
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +72,13 @@ async function converPptToImages(pptPath, pptName) {
         })
     })
 }
+
+app.get("/config", (req, res) => {
+    return res.json({
+        siteName: configJson?.siteName,
+        libraryName: configJson?.libraryName
+    })
+})
 
 app.get("/", (_, res) => {
     return res.json({
