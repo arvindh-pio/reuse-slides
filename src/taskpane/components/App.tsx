@@ -219,10 +219,10 @@ const App: React.FC = () => {
     })
   };
 
-  const getFile = async (file: CustomDriveItemResponse) => {
+  const getFile = async (file: any) => {
     const token = localStorage.getItem("token");
     const response = await
-      fetch(`https://graph.microsoft.com/v1.0/drives/${file?.parentReference?.driveId}/items/${file?.id}/content`,
+      fetch(`https://graph.microsoft.com/v1.0/drives/${file?.customDriveId}/items/${file?.customId}/content`,
         {
           method: "GET",
           headers: {
