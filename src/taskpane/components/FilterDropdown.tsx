@@ -12,7 +12,7 @@ const FilterDropdown = (props: any) => {
     const handleChange = async (event) => {
         const val = event.target.value;
         setSelectedOption(val);
-        handleFilter(customObject?.displayName , val);
+        handleFilter(customObject?.displayName, val);
 
         // const url = 
         //     `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/${library.id}/root/search(q='presentation')?$filter=fields/Tag eq '${val}'`;
@@ -35,18 +35,15 @@ const FilterDropdown = (props: any) => {
 
     return (
         <>
-            <label htmlFor="dropdown">{customObject?.displayName}: </label>
-            <select id="dropdown" value={selectedOption} onChange={handleChange}>
-                <option value="All">All</option>
-                {options.map((option, index) => (
-                    <option key={index} value={option}>
-                        {option}
-                    </option>
-                ))}
-            </select>
-            <div>
-                {selectedOption !== "All" && <p>Selected Option: {selectedOption}</p>}
-            </div>
+            {options?.map((option) => {
+                return (
+                    <>
+                        <input type="checkbox" id="tag" name="tag" value={option} onChange={handleChange} />
+                        <label htmlFor="tag">{option}</label>
+                    </>
+                )
+            })}
+            <br />
         </>
     );
 };

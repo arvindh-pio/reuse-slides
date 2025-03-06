@@ -90,7 +90,6 @@ const useFiles = () => {
                 const file = hit;
                 const extArr = file?.fields?.FileLeafRef ? file?.fields?.FileLeafRef.split(".") : file?.name.split(".");
                 const ext = extArr[extArr.length - 1];
-                console.log(hit, "hit", extArr);
 
                 if (ext === "ppt" || ext === "pptx") {
                     let image = null;
@@ -125,7 +124,7 @@ const useFiles = () => {
         return pptFiles;
     }
 
-    return { fetchFiles, getThumbnails };
+    return { fetchFiles, getThumbnails, getLibraryId };
 }
 
 export default useFiles;

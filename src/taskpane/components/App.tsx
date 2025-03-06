@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { makeStyles, Spinner } from "@fluentui/react-components";
+import { Button, Input, makeStyles, Spinner } from "@fluentui/react-components";
 import FileInput from "./FileInput";
 import Ppt from "../Pages/Ppt";
 import Slides from "../Pages/Slides";
@@ -11,9 +11,10 @@ import { getToken } from "../utils/utils";
 import Config from "./Config";
 import FilterDropdown from "./FilterDropdown";
 import { getFilteredData } from "../utils/filters";
-import { FilterRegular } from "@fluentui/react-icons";
+import { FilterAddFilled, FilterRegular } from "@fluentui/react-icons";
 import useInitial from "../hooks/useInitial";
 import useFiles from "../hooks/useFiles";
+import Filters from "../Pages/Filters";
 
 export interface ISlide {
   index: number;
@@ -35,18 +36,19 @@ const useStyles = makeStyles({
     flexDirection: "column"
   },
   searchInput: {
-    padding: "5px 10px",
-    fontSize: "0.9rem",
-    borderRadius: "5px",
-    outline: "none",
-    border: "1px solid black",
-    boxSizing: "border-box",
+    // padding: "5px 10px",
+    // fontSize: "0.9rem",
+    // borderRadius: "5px",
+    // outline: "none",
+    // border: "1px solid black",
+    // boxSizing: "border-box",
     width: "100%",
   },
   actionBtns: {
     display: "flex",
     width: "100%",
-    justifyContent: "space-evenly"
+    justifyContent: "space-evenly",
+    marginBottom: "0.7rem",
   },
   searchButton: {
     background: "none",
@@ -84,6 +86,15 @@ const useStyles = makeStyles({
     display: "flex",
     justifyContent: "center",
     alignItems: "center"
+  },
+  filter: {
+    fontSize: "1.5rem",
+    cursor: "pointer",
+    padding: "3px",
+    borderRadius: "5px",
+    ":hover": {
+      backgroundColor: "rgba(0,0,0,0.1)"
+    }
   }
 });
 
@@ -118,11 +129,11 @@ const App: React.FC = () => {
   // filter columns
   const [filterPage, setFilterPage] = useState(false);
   const [filterOptions, setFilterOptions] = useState([]);
-  const [tag, setTag] = useState(null);
+  const [userFilter, setUserFilter] = useState({});
 
   // 2
   const { fetchPPTFiles } = useInitial();
-  const { getThumbnails } = useFiles();
+  const [filteredResults, setFilteredResults] = useState([]);
 
   // backend call for generate previews
   const generatePreviews = async () => {
@@ -257,6 +268,7 @@ const App: React.FC = () => {
   const searchForKeywordInLibraryDocs = async () => {
     setError(null);
     setSearchClicked(true);
+    setLoading(true);
     const token = getToken();
 
     const url = `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/${drive.id}/root/search(q='{${searchQuery}}')`;
@@ -270,10 +282,15 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       const pptFiles = data?.value?.filter(file => file?.name?.endsWith(".pptx"));
-      const ppts = await getThumbnails(pptFiles);
-      console.log(ppts, "pp");
-      setSearchResults(ppts);
+      // const modData = filteredResults?.length > 0 ? filteredResults : searchResults?.length > 0 ? searchResults : recentResults;
+      const filteredFiles = recentResults?.filter((file: any) => {
+        const recentFiles = pptFiles?.some((result: any) => result?.name === file?.fields?.FileLeafRef);
+        return recentFiles;
+      });
+      setSearchResults(filteredFiles);
     } catch (error) {
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -284,29 +301,10 @@ const App: React.FC = () => {
     setError("");
   }
 
-  // const getFilters = async (libraryName) => {
-  //   const token = getToken();
-  //   const library = await getLibraryId(libraryName);
-
-  //   try {
-  //     const response = await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/lists/${library.id}/columns`, {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //         "Content-Type": "application/json"
-  //       },
-  //       method: "GET"
-  //     });
-  //     const colsData = await response.json();
-  //     const tagCol = colsData?.value?.find((col) => col?.displayName === "Tag");
-  //     setTag(tagCol);
-  //   } catch (error) {
-  //     console.log("filters error -> ", error);
-  //   }
-  // }
-
   const handleFilter = async (key: string, val: string) => {
-    const datas = getFilteredData(recentResults, key, val);
-    setSearchResults(datas);
+    // const modData = filteredResults?.length > 0 ? filteredResults : searchResults?.length > 0 ? searchResults : recentResults;
+    const datas = getFilteredData(recentResults, key, val, true);
+    setFilteredResults(datas);
   }
 
   // testing purpose for filter api
@@ -340,18 +338,30 @@ const App: React.FC = () => {
         },
       });
       const data = await response.json();
-      const { siteName, libraryName } = data;
       setSiteName(data?.siteName);
       setLibraryName(data?.libraryName);
 
-      const { files, drive, site } = await fetchPPTFiles({ siteName, libraryName });
+      const { files, drive, site, filterConfigs } = await fetchPPTFiles(data);
       setRecentResults(files);
       setDrive(drive);
       setSite(site);
+      setFilterOptions(filterConfigs);
     } catch (error) {
       console.log("Error in fetching config ", error);
     }
     setLoading(false);
+  }
+
+  const checkValue = () => {
+    let disabled = true;
+    for (const key in userFilter) {
+      const values = userFilter?.[key];
+      if (values?.length > 0) {
+        disabled = false;
+        break;
+      }
+    }
+    return disabled;
   }
 
   useEffect(() => {
@@ -369,17 +379,20 @@ const App: React.FC = () => {
   return (
     <div className={styles.root}>
       <div className={styles.searchDiv}>
-        <input
+        <Input
           type="text"
           name="searchQuery"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className={styles.searchInput} />
         <div className={styles.actionBtns}>
-          <button
-            onClick={searchForKeywordInLibraryDocs}
-            className={styles.searchButton}>Search</button>
-          <button className={styles.searchButton} onClick={handleReset} disabled={!isSearchClicked}>Reset</button>
+          <Button shape="circular" appearance="primary" onClick={searchForKeywordInLibraryDocs} disabled={!searchQuery}>Search</Button>
+          <Button shape="circular" onClick={handleReset} disabled={!isSearchClicked}>Reset</Button>
+          <div onClick={() => setFilterPage(true)}>
+            {checkValue()
+              ? <FilterRegular className={styles.filter} />
+              : <FilterAddFilled className={styles.filter} />}
+          </div>
         </div>
       </div>
       {/* uncomment to add browse functionality */}
@@ -388,17 +401,27 @@ const App: React.FC = () => {
             generatePPTDetails={generatePPTDetails} />
           {error && <p className={styles.block}>{error}</p>} */}
 
-      {/* Filters */}
-      <FilterRegular />
-      {tag && (
-        <FilterDropdown customObject={tag} site={site} library={drive} handleFilter={handleFilter} />
-      )}
-
-      {!showSlides
-        ? <Ppt
-          searchResults={(searchResults?.length > 0 || isSearchClicked) ? searchResults : recentResults}
-          generatePPTDetails={generatePPTDetails}
-          isSearchClicked={isSearchClicked} />
+      {filterPage ? (
+        <Filters 
+          filterOptions={filterOptions} 
+          userFilter={userFilter} 
+          setUserFilter={setUserFilter} 
+          setFilterPage={setFilterPage}
+          handleFilter={handleFilter}
+          setFilteredResults={setFilteredResults} />
+      ) : !showSlides
+        ? (
+          <>
+            <Ppt
+              searchResults={
+                filteredResults?.length > 0
+                  ? filteredResults
+                  : (searchResults?.length > 0 || isSearchClicked) ? searchResults : recentResults}
+              generatePPTDetails={generatePPTDetails}
+              isSearchClicked={isSearchClicked}
+              loading={loading} />
+          </>
+        )
         : loading ? (
           <Spinner />
         ) : (
