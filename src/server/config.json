@@ -1,4 +1,10 @@
 {
     "siteName": "Test Sales",
-    "libraryName": "Test Ppt"
+    "libraryName": "Test Ppt",
+    "filters": [
+        {
+            "name": "Tag",
+            "type": "choice"
+        }
+    ]
 }

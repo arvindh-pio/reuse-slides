@@ -73,11 +73,8 @@ async function converPptToImages(pptPath, pptName) {
     })
 }
 
-app.get("/config", (req, res) => {
-    return res.json({
-        siteName: configJson?.siteName,
-        libraryName: configJson?.libraryName
-    })
+app.get("/config", (_, res) => {
+    return res.json(configJson);
 })
 
 app.get("/", (_, res) => {
