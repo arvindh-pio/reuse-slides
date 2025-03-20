@@ -7,8 +7,8 @@ interface IFilterPage {
     userFilter: any;
     setUserFilter: any;
     setFilterPage: Dispatch<SetStateAction<boolean>>;
-    handleFilter: (x: string, y: string) => void;
-    setFilteredResults: React.Dispatch<React.SetStateAction<any[]>>;
+    handleFilter: ({ }) => void;
+    setUiResults: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const useStyles = makeStyles({
@@ -34,7 +34,7 @@ const useStyles = makeStyles({
 })
 
 const Filters = (props: IFilterPage) => {
-    const { filterOptions, userFilter, setUserFilter, setFilterPage, handleFilter, setFilteredResults } = props;
+    const { filterOptions, userFilter, setUserFilter, setFilterPage, handleFilter, setUiResults } = props;
     const styles = useStyles();
     const [localState, setLocalState] = useState(userFilter);
 
@@ -63,13 +63,13 @@ const Filters = (props: IFilterPage) => {
     const handleDisabled = (): boolean => {
         let disabled = false;
         for (const key in localState) {
-            if(!userFilter || !userFilter?.[key]) {
+            if (!userFilter || !userFilter?.[key]) {
                 disabled = true;
                 break;
             } else {
                 const currValues = localState?.[key];
                 const parentValues = userFilter?.[key];
-                if(currValues?.length !== parentValues?.length) {
+                if (currValues?.length !== parentValues?.length) {
                     disabled = false;
                     break;
                 }
@@ -83,17 +83,18 @@ const Filters = (props: IFilterPage) => {
     }
 
     const handleClear = () => {
-        if(!userFilter) return;
+        if (!userFilter) return;
         setUserFilter({});
         setLocalState({});
-        setFilteredResults([]);
+        setUiResults([]);
+        handleFilter({ type: "FILTER" });
     }
 
     const applyFilters = () => {
-        if(!userFilter) return;
+        if (!userFilter) return;
         setUserFilter(localState);
         setFilterPage(false);
-        handleFilter("Tag", localState?.["tag"]);
+        handleFilter({ filterKey: "Tag", filterValue: localState?.["tag"] });
     }
 
     return (
@@ -131,8 +132,8 @@ const Filters = (props: IFilterPage) => {
             })}
 
             <div className={styles.btnsDiv}>
-                <Button 
-                    shape="circular" 
+                <Button
+                    shape="circular"
                     // disabled={handleDisabled()} 
                     onClick={handleClear}>
                     Clear

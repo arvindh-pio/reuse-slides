@@ -7,13 +7,10 @@ import { CustomDriveItemResponse } from "../Types";
 import { API_BASE_URL, UPLOAD_API } from "../utils/constants";
 import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
-import { getToken } from "../utils/utils";
-import Config from "./Config";
-import FilterDropdown from "./FilterDropdown";
+import { getToken } from "../utils/utils";;
 import { getFilteredData } from "../utils/filters";
 import { FilterAddFilled, FilterRegular } from "@fluentui/react-icons";
 import useInitial from "../hooks/useInitial";
-import useFiles from "../hooks/useFiles";
 import Filters from "../Pages/Filters";
 
 export interface ISlide {
@@ -111,8 +108,10 @@ const App: React.FC = () => {
   const [base64, setBase64] = useState<string | null>(null);
   const [formatting, setFormatting] = useState(true);
 
-  const [recentResults, setRecentResults] = useState<CustomDriveItemResponse[]>([]);
-  const [searchResults, setSearchResults] = useState<CustomDriveItemResponse[]>([]);
+  const [initialResults, setInitialResults] = useState<CustomDriveItemResponse[]>([]);
+  const [uiResults, setUiResults] = useState<CustomDriveItemResponse[]>([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]);
 
   const [showSlides, setShowSlides] = useState(false);
   const [isSearchClicked, setSearchClicked] = useState(false);
@@ -133,7 +132,7 @@ const App: React.FC = () => {
 
   // 2
   const { fetchPPTFiles } = useInitial();
-  const [filteredResults, setFilteredResults] = useState([]);
+  const [lastSearchedKeyword, setLastSearchedKeyword] = useState("");
 
   // backend call for generate previews
   const generatePreviews = async () => {
@@ -254,10 +253,10 @@ const App: React.FC = () => {
 
   const handleBack = () => {
     // switch to initial states
-    setSearchResults([]);
-    setSearchQuery("");
+    // setUiResults(initialResults);
+    // setSearchQuery("");
     setShowSlides(false);
-    setSearchClicked(false);
+    // setSearchClicked(false);
     setError("");
 
     setPreviews([]);
@@ -282,13 +281,15 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       const pptFiles = data?.value?.filter(file => file?.name?.endsWith(".pptx"));
-      // const modData = filteredResults?.length > 0 ? filteredResults : searchResults?.length > 0 ? searchResults : recentResults;
-      const filteredFiles = recentResults?.filter((file: any) => {
+      const filteredFiles = initialResults?.filter((file: any) => {
         const recentFiles = pptFiles?.some((result: any) => result?.name === file?.fields?.FileLeafRef);
         return recentFiles;
       });
-      setSearchResults(filteredFiles);
+      // setSearchResults(filteredFiles); 
+      setLastSearchedKeyword(searchQuery);
+      return filteredFiles;
     } catch (error) {
+      return [];
     } finally {
       setLoading(false);
     }
@@ -296,15 +297,18 @@ const App: React.FC = () => {
 
   const handleReset = () => {
     setSearchQuery("");
-    setSearchResults([]);
+    setLastSearchedKeyword("");
     setSearchClicked(false);
     setError("");
+
+    // searchAndFilter
+    // setUiResults(initialResults);
+    searchAndFilter({ type: "SEARCH" });
   }
 
-  const handleFilter = async (key: string, val: string) => {
-    // const modData = filteredResults?.length > 0 ? filteredResults : searchResults?.length > 0 ? searchResults : recentResults;
-    const datas = getFilteredData(recentResults, key, val, true);
-    setFilteredResults(datas);
+  const handleFilter = async (data: any, key: string, val: string) => {
+    const datas = getFilteredData(data, key, val);
+    return datas;
   }
 
   // testing purpose for filter api
@@ -342,7 +346,8 @@ const App: React.FC = () => {
       setLibraryName(data?.libraryName);
 
       const { files, drive, site, filterConfigs } = await fetchPPTFiles(data);
-      setRecentResults(files);
+      setInitialResults(files);
+      setUiResults(files);
       setDrive(drive);
       setSite(site);
       setFilterOptions(filterConfigs);
@@ -364,11 +369,41 @@ const App: React.FC = () => {
     return disabled;
   }
 
-  useEffect(() => {
-    if (!showSlides) {
-      setSearchQuery("");
+  const searchAndFilter = async ({ filterKey = "", filterValue = "", type = null }) => {
+    if(!type) {
+      let data = [];
+      if(searchQuery) {
+        const searchFiles = await searchForKeywordInLibraryDocs();
+        data = [...searchFiles];
+        setSearchResults(data);
+      } else {
+        data = [...initialResults];
+      }
+      if((filterKey && filterValue) || Object.keys(userFilter)?.length > 0) {
+        data = await handleFilter(data, filterKey || "Tag", filterValue || userFilter?.["tag"]);
+        setFilteredResults(data);
+      }
+      setUiResults(data);
+    } else {
+      if(type === "SEARCH") {
+        if(Object.keys(userFilter)?.length > 0) {
+          let data = await handleFilter(initialResults, filterKey || "Tag", filterValue || userFilter?.["tag"]);
+          setUiResults(data);
+        } else {
+          setUiResults(initialResults);
+        }
+        setSearchResults([]);
+      } else {
+        if(searchQuery) {
+          const searchFiles = await searchForKeywordInLibraryDocs();
+          setUiResults(searchFiles);
+        } else {
+          setUiResults(initialResults);
+        }
+        setFilteredResults([]);
+      }
     }
-  }, [showSlides])
+  }
 
   useEffect(() => {
     fetchConfig();
@@ -386,7 +421,7 @@ const App: React.FC = () => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className={styles.searchInput} />
         <div className={styles.actionBtns}>
-          <Button shape="circular" appearance="primary" onClick={searchForKeywordInLibraryDocs} disabled={!searchQuery}>Search</Button>
+          <Button shape="circular" appearance="primary" onClick={() => searchAndFilter({})}>Search</Button>
           <Button shape="circular" onClick={handleReset} disabled={!isSearchClicked}>Reset</Button>
           <div onClick={() => setFilterPage(true)}>
             {checkValue()
@@ -407,16 +442,13 @@ const App: React.FC = () => {
           userFilter={userFilter} 
           setUserFilter={setUserFilter} 
           setFilterPage={setFilterPage}
-          handleFilter={handleFilter}
-          setFilteredResults={setFilteredResults} />
+          handleFilter={searchAndFilter}
+          setUiResults={setUiResults} />
       ) : !showSlides
         ? (
           <>
             <Ppt
-              searchResults={
-                filteredResults?.length > 0
-                  ? filteredResults
-                  : (searchResults?.length > 0 || isSearchClicked) ? searchResults : recentResults}
+              searchResults={uiResults}
               generatePPTDetails={generatePPTDetails}
               isSearchClicked={isSearchClicked}
               loading={loading} />
