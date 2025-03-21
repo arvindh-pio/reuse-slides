@@ -32,7 +32,8 @@ const loginUser = async () => {
   try {
     await msalInstance.initialize();
     const loginResponse = await msalInstance.loginPopup({
-      scopes: ["User.read", "Files.Read", "Files.Read.All", "Sites.Read.All"]
+      scopes: ["User.read", "Files.Read", "Files.Read.All", "Sites.Read.All"],
+      prompt: "select_account",
     });
     console.log("login res -> ", loginResponse);
     await getAccessToken();
