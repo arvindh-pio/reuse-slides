@@ -21,7 +21,7 @@ const useStyles = makeStyles({
     gap: "10px"
   },
   slide: {
-    border: "1px solid crimson",
+    border: "1px solid black",
     width: "200px",
     height: "100px",
     borderRadius: "6px",
@@ -121,7 +121,7 @@ const Slides = (props: IPreview) => {
               className={styles.slide}
               key={slide?.index + "_" + idx}
               onClick={() => handleInsert(sourceSlideIds?.[idx]?.slideId, base64)}
-            >{slide?.index}</div>
+            >Slide - {slide?.index}</div>
           )
         })
       )}

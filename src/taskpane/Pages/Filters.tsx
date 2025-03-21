@@ -34,7 +34,7 @@ const useStyles = makeStyles({
 })
 
 const Filters = (props: IFilterPage) => {
-    const { filterOptions, userFilter, setUserFilter, setFilterPage, handleFilter, setUiResults } = props;
+    const { filterOptions, userFilter, setUserFilter, setFilterPage, handleFilter } = props;
     const styles = useStyles();
     const [localState, setLocalState] = useState(userFilter);
 
@@ -86,7 +86,6 @@ const Filters = (props: IFilterPage) => {
         if (!userFilter) return;
         setUserFilter({});
         setLocalState({});
-        setUiResults([]);
         handleFilter({ type: "FILTER" });
     }
 
@@ -105,7 +104,7 @@ const Filters = (props: IFilterPage) => {
             </div>
             {filterOptions?.map((filter) => {
                 return (
-                    <div>
+                    <div key={filter?.name}>
                         <label className={styles.filterLabel}>{filter?.name}</label>
                         <div>
                             {filter?.choice?.choices?.map((choice) => {

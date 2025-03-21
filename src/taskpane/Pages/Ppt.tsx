@@ -1,16 +1,17 @@
 import React from "react";
 import { CustomDriveItemResponse } from "../Types";
-import { Spinner } from "@fluentui/react-components";
+import { Button, Spinner } from "@fluentui/react-components";
 
 interface IPpt {
     searchResults: any[];
     generatePPTDetails: (x: CustomDriveItemResponse) => void;
     isSearchClicked: boolean;
     loading: boolean;
+    handleOpenInPpt: (index: number) => void;
 }
 
 const Ppt = (props: IPpt) => {
-    const { searchResults, generatePPTDetails, isSearchClicked, loading } = props;
+    const { searchResults, generatePPTDetails, isSearchClicked, loading, handleOpenInPpt } = props;
 
     const handleClick = (result: CustomDriveItemResponse) => {
         generatePPTDetails(result);
@@ -35,7 +36,7 @@ const Ppt = (props: IPpt) => {
                 <p>No results found</p>
             ) : (
                 <>
-                    {searchResults?.map((result) => {
+                    {searchResults?.map((result, idx) => {
                         return (
                             <div key={result?.id} style={{ width: "100%", marginBottom: "0.5rem" }}>
                                 <p style={{
@@ -53,6 +54,9 @@ const Ppt = (props: IPpt) => {
                                         borderRadius: "8px",
                                         cursor: "pointer"
                                     }} />
+                                <div style={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
+                                    <Button size="small" onClick={() => handleOpenInPpt(idx)}>Open in PPT</Button>
+                                </div>
                             </div>
                         )
                     })}

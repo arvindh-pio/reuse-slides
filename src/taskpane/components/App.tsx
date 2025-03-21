@@ -400,16 +400,22 @@ const App: React.FC = () => {
         } else {
           setUiResults(initialResults);
         }
+        setFilterPage(false);
         setFilteredResults([]);
       }
     }
+  }
+
+  const handleOpenInPpt = (index: number) => {
+    const url = `ms-powerpoint:ofe|u|${uiResults?.[index]?.webUrl}`;
+    window.location.href = url;
   }
 
   useEffect(() => {
     fetchConfig();
   }, [])
 
-  if (loading || !siteName || !libraryName) return <p className={styles.loading}><Spinner /></p>
+  if (loading || !siteName || !libraryName) return <div className={styles.loading}><Spinner /></div>
 
   return (
     <div className={styles.root}>
@@ -451,7 +457,8 @@ const App: React.FC = () => {
               searchResults={uiResults}
               generatePPTDetails={generatePPTDetails}
               isSearchClicked={isSearchClicked}
-              loading={loading} />
+              loading={loading}
+              handleOpenInPpt={handleOpenInPpt} />
           </>
         )
         : loading ? (
