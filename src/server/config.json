@@ -1,9 +1,13 @@
 {
-    "siteName": "Test Sales",
-    "libraryName": "Test Ppt",
+    "siteName": "Marketing",
+    "libraryName": "Marketing-FinalVersions",
     "filters": [
         {
-            "name": "Tag",
+            "name": "Technology/Service",
+            "type": "choice"
+        },
+        {
+            "name": "Asset Type",
             "type": "choice"
         }
     ]
