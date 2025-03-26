@@ -1,6 +1,7 @@
 import { Button, makeStyles } from "@fluentui/react-components";
 import { DismissFilled } from "@fluentui/react-icons";
 import React, { Dispatch, SetStateAction, useState } from "react";
+import { MultiselectWithTags } from "../components/MultiSelect";
 
 interface IFilterPage {
     filterOptions: any;
@@ -93,7 +94,14 @@ const Filters = (props: IFilterPage) => {
         if (!userFilter) return;
         setUserFilter(localState);
         setFilterPage(false);
-        handleFilter({ filterKey: "Tag", filterValue: localState?.["tag"] });
+        handleFilter({ filterObject: localState });
+    }
+
+    const getValues = (name: string, value: string[]) => {
+        setLocalState((prev) => ({
+            ...prev,
+            [name]: [...value]
+        }))
     }
 
     return (
@@ -102,7 +110,7 @@ const Filters = (props: IFilterPage) => {
                 <h3 style={{ margin: "0", marginRight: "0.5rem" }}>Filters</h3>
                 <DismissFilled fontSize="20px" style={{ cursor: "pointer" }} onClick={() => setFilterPage(false)} />
             </div>
-            {filterOptions?.map((filter) => {
+            {/* {filterOptions?.map((filter) => {
                 return (
                     <div key={filter?.name}>
                         <label className={styles.filterLabel}>{filter?.name}</label>
@@ -126,6 +134,19 @@ const Filters = (props: IFilterPage) => {
                                 )
                             })}
                         </div>
+                    </div>
+                )
+            })} */}
+            {filterOptions?.map((filter) => {
+                return (
+                    <div key={filter?.displayName}>
+                        <MultiselectWithTags
+                            label={filter?.displayName}
+                            name={filter?.name}
+                            options={filter?.choice?.choices}
+                            getValues={getValues}
+                            filterValues={userFilter}
+                        />
                     </div>
                 )
             })}

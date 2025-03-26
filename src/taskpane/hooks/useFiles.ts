@@ -3,34 +3,15 @@ import { getToken } from "../utils/utils";
 const useFiles = () => {
     const token = getToken();
 
-    const fetchFiles = async (driveId: string, siteId: string, libraryName: string) => {
+    const customFetchFilesWithThumbnails = async (siteId: string, libraryName: string, existingFiles: any) => {
         try {
-            const defaultFiles = await fetchFilesFromDrive(driveId);
             const expandedFiles = await fetchExpandedFiles(siteId, libraryName);
-            const files = mergeResponses(defaultFiles, expandedFiles);
+            const files = mergeResponses(existingFiles, expandedFiles);
             const ppts = await getThumbnails(files);
             return ppts;
         } catch (error) {
             console.log("error in getting files ", error);
             return [];
-        }
-    }
-
-    const fetchFilesFromDrive = async (driveId: string) => {
-        try {
-            const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
-            const driveResponse = await fetch(url, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                method: "GET"
-            });
-            const drivesData = await driveResponse.json();
-            const pptFiles = drivesData?.value?.filter(file => file?.name?.endsWith(".pptx"));
-            return pptFiles;
-        } catch (error) {
-            console.log("error get files from drive -> ", error);
         }
     }
 
@@ -124,7 +105,7 @@ const useFiles = () => {
         return pptFiles;
     }
 
-    return { fetchFiles, getThumbnails, getLibraryId };
+    return { getThumbnails, getLibraryId, customFetchFilesWithThumbnails };
 }
 
 export default useFiles;

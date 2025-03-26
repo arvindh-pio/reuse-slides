@@ -12,6 +12,8 @@ import { getFilteredData } from "../utils/filters";
 import { FilterAddFilled, FilterRegular } from "@fluentui/react-icons";
 import useInitial from "../hooks/useInitial";
 import Filters from "../Pages/Filters";
+import ReactPaginate from "react-paginate";
+import useFiles from "../hooks/useFiles";
 
 export interface ISlide {
   index: number;
@@ -92,6 +94,56 @@ const useStyles = makeStyles({
     ":hover": {
       backgroundColor: "rgba(0,0,0,0.1)"
     }
+  },
+  customUl: {
+    listStyle: "none",
+    display: "flex",
+    flexWrap: "wrap",
+    padding: "0",
+    gap: "8px",
+    "& li": {
+      // padding: "2px 9px",
+      cursor: "pointer",
+      borderRadius: "100%",
+      width: "25px",
+      height: "25px",
+      textAlign: "center",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      "&:hover": {
+        backgroundColor: "black",
+        color: "white"
+      },
+    },
+    "& .selected": {
+      backgroundColor: "black",
+      color: "white"
+    },
+    "& .previous": {
+      border: "0",
+      borderRadius: "0",
+      backgroundColor: "none",
+      width: "auto",
+      height: "auto",
+      "&:hover": {
+        backgroundColor: "transparent",
+        color: "black",
+        textDecoration: "underline"
+      },
+    },
+    "& .next": {
+      border: "0",
+      borderRadius: "0",
+      backgroundColor: "none",
+      width: "auto",
+      height: "auto",
+      "&:hover": {
+        backgroundColor: "transparent",
+        color: "black",
+        textDecoration: "underline"
+      },
+    }
   }
 });
 
@@ -132,7 +184,13 @@ const App: React.FC = () => {
 
   // 2
   const { fetchPPTFiles } = useInitial();
-  const [lastSearchedKeyword, setLastSearchedKeyword] = useState("");
+  const { getThumbnails } = useFiles();
+
+  const [itemOffset, setItemOffset] = useState(0);
+
+  const endOffset = itemOffset + 10;
+  let currentItems = uiResults.slice(itemOffset, endOffset);
+  const pageCount = Math.ceil(uiResults.length / 10);
 
   // backend call for generate previews
   const generatePreviews = async () => {
@@ -285,10 +343,10 @@ const App: React.FC = () => {
         const recentFiles = pptFiles?.some((result: any) => result?.name === file?.fields?.FileLeafRef);
         return recentFiles;
       });
-      // setSearchResults(filteredFiles); 
-      setLastSearchedKeyword(searchQuery);
+      // setSearchResults(filteredFiles);
       return filteredFiles;
     } catch (error) {
+      console.log("search error -> ", error);
       return [];
     } finally {
       setLoading(false);
@@ -297,40 +355,23 @@ const App: React.FC = () => {
 
   const handleReset = () => {
     setSearchQuery("");
-    setLastSearchedKeyword("");
     setSearchClicked(false);
     setError("");
 
-    // searchAndFilter
     // setUiResults(initialResults);
     searchAndFilter({ type: "SEARCH" });
   }
 
-  const handleFilter = async (data: any, key: string, val: string) => {
-    const datas = getFilteredData(data, key, val);
+  const handleFilter = async (data: any, filterObject: any) => {
+    let datas = [];
+    let curr = [...data];
+    for (const key in filterObject) {
+      const value = filterObject?.[key];
+      curr = getFilteredData(curr, key, value);
+      datas = [...curr];
+    }
     return datas;
   }
-
-  // testing purpose for filter api
-  // const test = async () => {
-  //   const token = getToken();
-  //   const library = await getLibraryId(site.id);
-
-  //   try {
-  //     const response = await fetch(
-  //       `https://graph.microsoft.com/v1.0/sites/${site.id}/drives/b!A8xRw8PhhEipKKGLOg8jIdLYbQIfU9pOn4DXZs7wMSE2CHN5BdKHRr8UO3rRbCpK/root/search(q='presentation')?$filter=fields/Tag eq 'Tech'`, {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //         "Content-Type": "application/json"
-  //       },
-  //       method: "GET"
-  //     });
-  //     const colsData = await response.json();
-  //     console.log(colsData, "^^^^^^");
-  //   } catch (error) {
-  //     console.log("filters error -> ", error);
-  //   }
-  // }
 
   const fetchConfig = async () => {
     setLoading(true);
@@ -369,32 +410,33 @@ const App: React.FC = () => {
     return disabled;
   }
 
-  const searchAndFilter = async ({ filterKey = "", filterValue = "", type = null }) => {
-    if(!type) {
+  const searchAndFilter = async ({ filterObject = {}, type = null }) => {
+    if (!type) {
       let data = [];
-      if(searchQuery) {
+      if (searchQuery) {
         const searchFiles = await searchForKeywordInLibraryDocs();
         data = [...searchFiles];
         setSearchResults(data);
       } else {
         data = [...initialResults];
       }
-      if((filterKey && filterValue) || Object.keys(userFilter)?.length > 0) {
-        data = await handleFilter(data, filterKey || "Tag", filterValue || userFilter?.["tag"]);
+      if (Object.keys(filterObject)?.length > 0 || Object.keys(userFilter)?.length > 0) {
+        data = await handleFilter(data, filterObject);
         setFilteredResults(data);
       }
       setUiResults(data);
     } else {
-      if(type === "SEARCH") {
-        if(Object.keys(userFilter)?.length > 0) {
-          let data = await handleFilter(initialResults, filterKey || "Tag", filterValue || userFilter?.["tag"]);
+      // RESETTING
+      if (type === "SEARCH") {
+        if (Object.keys(userFilter)?.length > 0) {
+          let data = await handleFilter(initialResults, filterObject);
           setUiResults(data);
         } else {
           setUiResults(initialResults);
         }
         setSearchResults([]);
       } else {
-        if(searchQuery) {
+        if (searchQuery) {
           const searchFiles = await searchForKeywordInLibraryDocs();
           setUiResults(searchFiles);
         } else {
@@ -411,9 +453,28 @@ const App: React.FC = () => {
     window.location.href = url;
   }
 
+  const handlePageClick = (event) => {
+    const newOffset = (event.selected * 10) % uiResults.length;
+    console.log(
+      `User requested page number ${event.selected}, which is offset ${newOffset}`
+    );
+    setItemOffset(newOffset);
+  };
+
+  const fetchWithThumbnails = async (items: any) => {
+    const ppts = await getThumbnails(items);
+    currentItems = ppts;
+  }
+
   useEffect(() => {
     fetchConfig();
   }, [])
+
+  useEffect(() => {
+    if (currentItems?.length) {
+      fetchWithThumbnails(currentItems);
+    }
+  }, [currentItems?.length])
 
   if (loading || !siteName || !libraryName) return <div className={styles.loading}><Spinner /></div>
 
@@ -443,10 +504,10 @@ const App: React.FC = () => {
           {error && <p className={styles.block}>{error}</p>} */}
 
       {filterPage ? (
-        <Filters 
-          filterOptions={filterOptions} 
-          userFilter={userFilter} 
-          setUserFilter={setUserFilter} 
+        <Filters
+          filterOptions={filterOptions}
+          userFilter={userFilter}
+          setUserFilter={setUserFilter}
           setFilterPage={setFilterPage}
           handleFilter={searchAndFilter}
           setUiResults={setUiResults} />
@@ -454,11 +515,20 @@ const App: React.FC = () => {
         ? (
           <>
             <Ppt
-              searchResults={uiResults}
+              searchResults={currentItems}
               generatePPTDetails={generatePPTDetails}
               isSearchClicked={isSearchClicked}
               loading={loading}
               handleOpenInPpt={handleOpenInPpt} />
+            <ReactPaginate
+              className={styles.customUl}
+              nextLabel="Next"
+              onPageChange={handlePageClick}
+              pageRangeDisplayed={2}
+              pageCount={pageCount}
+              previousLabel="Previous"
+              renderOnZeroPageCount={null}
+            />
           </>
         )
         : loading ? (
