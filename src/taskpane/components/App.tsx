@@ -322,7 +322,7 @@ const App: React.FC = () => {
     setSourceSlideIds([]);
   }
 
-  const searchForKeywordInLibraryDocs = async () => {
+  const searchForKeywordInLibraryDocs = async () => { 
     setError(null);
     setSearchClicked(true);
     setLoading(true);
@@ -524,7 +524,7 @@ const App: React.FC = () => {
               className={styles.customUl}
               nextLabel="Next"
               onPageChange={handlePageClick}
-              pageRangeDisplayed={2}
+              pageRangeDisplayed={4}
               pageCount={pageCount}
               previousLabel="Previous"
               renderOnZeroPageCount={null}

@@ -139,7 +139,7 @@ const Filters = (props: IFilterPage) => {
             })} */}
             {filterOptions?.map((filter) => {
                 return (
-                    <div key={filter?.displayName}>
+                    <div key={filter?.displayName} style={{ marginBottom: "1rem" }}>
                         <MultiselectWithTags
                             label={filter?.displayName}
                             name={filter?.name}

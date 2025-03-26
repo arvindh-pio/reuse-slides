@@ -119,7 +119,7 @@ export const MultiselectWithTags = (props: MultiSelectProps) => {
             <Combobox
                 aria-labelledby={labelledBy}
                 multiselect={true}
-                placeholder={placeholder || "Select one or more animals"}
+                placeholder={placeholder || "Select one or more options"}
                 selectedOptions={selectedOptions}
                 onOptionSelect={onSelect}
                 ref={comboboxInputRef}
